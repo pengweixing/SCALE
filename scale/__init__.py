@@ -44,6 +44,7 @@ import pandas as pd
 import os
 import scanpy as sc
 from anndata import AnnData
+import torch.nn as nn
 
 from typing import Union, List
 
@@ -191,7 +192,7 @@ def SCALE_function(
     dims = [input_dim,  latent,  encode_dim,  decode_dim]
     model = SCALE(dims, n_centroids=k)
     # print(model)
-
+    model = nn.DataParallel(model)
     if not pretrain:
         print('\n## Training Model ##')
         model.init_gmm_params(testloader)
@@ -204,17 +205,21 @@ def SCALE_function(
                    )
         if outdir:
             torch.save(model.state_dict(), os.path.join(outdir, 'model.pt')) # save model
+        print('\n##  Model has been saved')
     else:
         print('\n## Loading Model: {}\n'.format(pretrain))
         model.load_model(pretrain)
         model.to(device)
+        print('\n##  Model has been Loaded')
     
     ### output ###
-
+    
     # 1. latent feature
+    print('\n##  encoding the latent feature')
     adata.obsm['latent'] = model.encodeBatch(testloader, device=device, out='z')
-
+    print('\n##  latent feature has been extracted')
     # 2. cluster
+    print('\n##  clustering')
     sc.pp.neighbors(adata, n_neighbors=30, use_rep='latent')
     if cluster_method == 'leiden':
         sc.tl.leiden(adata)
@@ -223,7 +228,7 @@ def SCALE_function(
         kmeans = KMeans(n_clusters=k, n_init=20, random_state=0)
         adata.obs['kmeans'] = kmeans.fit_predict(adata.obsm['latent']).astype(str)
 
-
+    print('\n##  clustering finished')
     sc.set_figure_params(dpi=80, figsize=(6,6), fontsize=10)
     if outdir:
         sc.settings.figdir = outdir
@@ -243,8 +248,8 @@ def SCALE_function(
         print("Imputation")
         adata.obsm['impute'] = model.encodeBatch(testloader, device=device, out='x')
         adata.obsm['binary'] = binarization(adata.obsm['impute'], adata.X)
-    
+        print("Imputation finished\n")
     if outdir:
+        print("writing h5ad out\n")
         adata.write(outdir+'adata.h5ad', compression='gzip')
-    
     return adata

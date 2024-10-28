@@ -186,7 +186,7 @@ def SCALE_function(
         cell_num, input_dim, max_iter, batch_size,  min_peaks,  min_cells))
     print("============================")
 
-    latent = 10
+    latent = 30
     encode_dim = [1024, 128]
     decode_dim = []
     dims = [input_dim,  latent,  encode_dim,  decode_dim]
@@ -244,7 +244,7 @@ def SCALE_function(
         color = [c for c in ['celltype',  'kmeans', 'leiden', 'cell_type'] if c in adata.obs]
         sc.pl.tsne(adata, color=color, save=save, show=False, wspace=0.4, ncols=4)
     
-    if  impute:
+    if  True:
         print("Imputation")
         adata.obsm['impute'] = model.encodeBatch(testloader, device=device, out='x')
         adata.obsm['binary'] = binarization(adata.obsm['impute'], adata.X)
